@@ -7,51 +7,9 @@ require "net/http"
 require "cgi"
 require "uri"
 
-class ServiceNotAvailable < Exception
-end
+require 'shorturl/service'
 
-class InvalidService < Exception
-end
-
-class Service
-  attr_accessor :port, :code, :method, :action, :field, :block, :response_block
-
-  # Intialize the service with a hostname (required parameter) and you
-  # can override the default values for the HTTP port, expected HTTP
-  # return code, the form method to use, the form action, the form
-  # field which contains the long URL, and the block of what to do
-  # with the HTML code you get.
-  def initialize(hostname) # :yield: service
-    @hostname = hostname
-    @port = 80
-    @code = 200
-    @method = :post
-    @action = "/"
-    @field = "url"
-
-    if block_given?
-      yield self
-    end
-  end
-
-  # Now that our service is set up, call it with all the parameters to
-  # (hopefully) return only the shortened URL.
-  def call(url)
-    Net::HTTP.start(@hostname, @port) { |http|
-      response = case @method
-                 when :post then http.post(@action, "#{@field}=#{CGI.escape(url)}")
-                 when :get then http.get("#{@action}?#{@field}=#{CGI.escape(url)}")
-                 end
-      if response.code == @code.to_s
-        @response_block ? @response_block.call(response) : @block.call(response.read_body)
-      end
-    }
-  rescue Errno::ECONNRESET => e
-    raise ServiceNotAvailable, e.to_s, e.backtrace
-  end
-end
-
-class ShortURL
+module ShortURL
   # Hash table of all the supported services.  The key is a symbol
   # representing the service (usually the hostname minus the .com,
   # .net, etc.)  The value is an instance of Service with all the
@@ -63,13 +21,13 @@ class ShortURL
       s.field = "website_url"
       s.block = lambda { |body| URI.extract(body).grep(/rubyurl/)[0] }      
     },
-    
+  
     :tinyurl => Service.new("tinyurl.com") { |s|
       s.action = "/api-create.php"
       s.method = :get
       s.block = lambda { |body| URI.extract(body).grep(/tinyurl/)[0] }
     },
-    
+  
     :shorl => Service.new("shorl.com") { |s|
       s.action = "/create.php"
       s.block = lambda { |body| URI.extract(body)[2] }
@@ -114,7 +72,7 @@ class ShortURL
       s.action = "/shorten.php"
       s.block = lambda { |body| URI.extract(body).grep(/shortify/)[-1] }
     },
-    
+  
     :moourl => Service.new("moourl.com") { |s|      
       s.code = 302
       s.action = "/create/"
@@ -196,6 +154,10 @@ class ShortURL
   # Array containing symbols representing all the implemented URL
   # shortening services
   @@valid_services = @@services.keys
+
+  def self.services
+    @@services
+  end
 
   # Returns @@valid_services
   def self.valid_services
