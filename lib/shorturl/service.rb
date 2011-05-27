@@ -29,10 +29,11 @@ module ShortURL
     # Now that our service is set up, call it with all the parameters to
     # (hopefully) return only the shortened URL.
     def call(url)
+      @field = @field ? "#{@field}=" : ''
       Net::HTTP.start(@hostname, @port) { |http|
         response = case @method
-                   when :post then http.post(@action, "#{@field}=#{CGI.escape(url)}")
-                   when :get then http.get("#{@action}?#{@field}=#{CGI.escape(url)}")
+                   when :post then http.post(@action, "#{@field}#{CGI.escape(url)}")
+                   when :get then http.get("#{@action}?#{@field}#{CGI.escape(url)}")
                    end
         if response.code == @code.to_s
           @response_block ? @response_block.call(response) : @block.call(response.read_body)
