@@ -153,15 +153,21 @@ module ShortURL
 
   # Array containing symbols representing all the implemented URL
   # shortening services
-  @@valid_services = @@services.keys
+  def self.valid_services
+    @@services.keys
+  end
 
   def self.services
     @@services
   end
 
-  # Returns @@valid_services
-  def self.valid_services
-    @@valid_services
+  @@default_service = :rubyurl
+  def self.default_service
+    @@default_service
+  end
+
+  def self.default_service=(service)
+    @@default_service = service
   end
 
   # Main method of ShortURL, its usage is quite simple, just give an
@@ -193,9 +199,11 @@ module ShortURL
   # call-seq:
   #   ShortURL.shorten("http://mypage.com") => Uses RubyURL
   #   ShortURL.shorten("http://mypage.com", :tinyurl)
-  def self.shorten(url, service = :rubyurl)
+  def self.shorten(url, service = nil)
+    service = default_service if !service
+
     if valid_services.include? service
-      @@services[service].call(url)
+      services[service].call(url)
     else
       raise InvalidService
     end
